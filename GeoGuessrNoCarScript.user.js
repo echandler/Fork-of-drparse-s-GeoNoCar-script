@@ -140,7 +140,7 @@ console.log(OPTIONS);
                         
                         // Add trippy effect.
                         :  ${OPTIONS.debug}
-                            ? proj.xyz * 0.5
+                            ? proj.xyz * 0.7
                             : fn()              //fragColor //linearColors  //vec3((_mix * st.x), (_mix * st.y), (_mix * st.x))//vec3(tan(thetaD * 10000.0) * 0.1, tan(thetaD*10000.0)* 0.1,tan(thetaD* 10000.0) * 0.3 ) //vec3(rand(vec2(potato.y, a.y))*0.2,rand(vec2(potato.x, a.z))*0.2 ,rand(vec2(a.x, a.y))*0.5 )
 
                     :proj //texture2DProj(g,a).rgb// vec3(_r, _r, _r) //vec3(_r, t.gb) //texture2DProj(g,a).rgb
