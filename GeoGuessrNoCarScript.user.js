@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v1.6
+// @name         Fork of drparse's excellent GeoNoCar script v1.7
 // @description  Adds trippy effect to GeoNoCar script.
 // @namespace    https://www.geoguessr.com/
-// @version      1.6
+// @version      1.7
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
 // @run-at       document-start
 // @copyright    2020, drparse
-// @updateURL    
+// @updateURL    https://github.com/echandler/Fork-of-drparse-s-GeoNoCar-script/raw/main/GeoGuessrNoCarScript.user.js
 // @license      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @noframes
 // ==/UserScript==
