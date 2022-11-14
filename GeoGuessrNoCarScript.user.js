@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v1.76
+// @name         Fork of drparse's excellent GeoNoCar script v1.77
 // @description  Adds trippy effect to GeoNoCar script.
 // @namespace    https://www.geoguessr.com/
-// @version      1.76
+// @version      1.77
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
@@ -207,7 +207,10 @@ console.log(OPTIONS);
             body.appendChild(msg);
             body.appendChild(closeBtn);
             document.body.appendChild(body);
-
+            
+            let inputs = body.querySelectorAll('input');
+            inputs.forEach(el => el.addEventListener('mousedown', e => e.stopPropagation()));
+            
             body.addEventListener('mousedown', function(e){
                 console.log(e);
                 document.body.addEventListener('mousemove', mmove);
