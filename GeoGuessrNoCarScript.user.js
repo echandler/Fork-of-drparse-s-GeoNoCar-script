@@ -186,7 +186,11 @@ console.log(OPTIONS);
                 info.Phi = document.getElementById('PhiInput').value;
                 info.debug = document.getElementById('debugCheck').checked;
                 localStorage['noCarScriptData'] = JSON.stringify(info);
+                msg.innerText = "Saved. Please refresh site.";
             });
+
+            let msg = document.createElement('span');
+            msg.style.cssText = "margin-left: 2em; font-size: 0.7em; color: grey;";
 
             let closeBtn = document.createElement('div');
             closeBtn.style = 'position:absolute; right: 10px; top:10px; cursor: pointer;';
@@ -200,6 +204,7 @@ console.log(OPTIONS);
             table.appendChild(tr4);
             body.appendChild(table);
             body.appendChild(saveBtn);
+            body.appendChild(msg);
             body.appendChild(closeBtn);
             document.body.appendChild(body);
 
