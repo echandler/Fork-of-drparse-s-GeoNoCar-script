@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v1.75
+// @name         Fork of drparse's excellent GeoNoCar script v1.76
 // @description  Adds trippy effect to GeoNoCar script.
 // @namespace    https://www.geoguessr.com/
-// @version      1.75
+// @version      1.76
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
