@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v1.77
-// @description  Adds trippy effect to GeoNoCar script.
+// @name         Fork of drparse's excellent GeoNoCar script v1.91
+// @description  Improvements to classic GeoNoCar script by drparse.
 // @namespace    https://www.geoguessr.com/
-// @version      1.77
+// @version      1.92
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
@@ -21,18 +21,12 @@ function injected() {
     info = info? JSON.parse(info): { Theta:  0.85, Omega: 0.53, Phi: 0.10, debug: false, x: 100, y: 100};
 
     const OPTIONS = {
-        colorR: 0.5,
-        colorG: 0.5,
-        colorB: 0.5,
         innerWidth: window.innerWidth,
         innerHeight: window.innerHeight,
-        size: +info.Theta,
-        length: +info.Omega,
-        width: +info.Phi,
+        size: 0.85, //+info.Theta,
         debug: info.debug === false? false: true,
     };
 
-console.log(OPTIONS);
     // If the script breaks, search devtools for "BINTULU" and replace these lines with the new one
     const vertexOld = "const float f=3.1415926;varying vec3 a;uniform vec4 b;attribute vec3 c;attribute vec2 d;uniform mat4 e;void main(){vec4 g=vec4(c,1);gl_Position=e*g;a=vec3(d.xy*b.xy+b.zw,1);a*=length(c);}";
     const fragOld = "precision highp float;const float h=3.1415926;varying vec3 a;uniform vec4 b;uniform float f;uniform sampler2D g;void main(){vec4 i=vec4(texture2DProj(g,a).rgb,f);gl_FragColor=i;}";
@@ -85,6 +79,10 @@ console.log(OPTIONS);
         }
 
          vec3 fn(){
+            if (${OPTIONS.debug}){
+                vec3 proj = texture2DProj(g,a).rgb;
+                return proj * 0.7;
+            }
             float rx = float(${OPTIONS.innerWidth});
             float ry = float(${OPTIONS.innerHeight});
 
@@ -113,37 +111,58 @@ console.log(OPTIONS);
         }
 
         void main(){
-
-            float blobSize = float(${OPTIONS.size});//0.76; // default: 1.0 . Bigger number == bigger blob
-            float theta = blob.y * blobSize;
-
-            // Smaller thresholdD1 makes the blob longer. The more distance between
-            // thesholdD1 and thresholdD1 makes the blob skinnier. Changing potatoSize
-            // changes the overall size equally.
-            float threshold1 = float(${OPTIONS.length});//0.45;
-            float threshold2 = threshold1 + float(${OPTIONS.width});//0.29; 0.73;
-
-            float x = blob.x;
-            float y = abs(4.0*x - 2.0);
-            float phi = smoothstep(0.0, 1.0, y > 1.0 ? 2.0 - y : y);
-            float _mix = mix(threshold1, threshold2, phi);
+            // Unfortunately blobSize was here when the below calculations were made and they
+            // will have to be redone to remove blobSize. Maybe in the future sometime....
+            float blobSize = 0.85;
+            float thetaY = blob.y * blobSize;
+            float thetaX = blob.x * blobSize;
 
             vec3 proj = texture2DProj(g,a).rgb;
 
+            float ty = 0.018; // Made up variable name
+            float aa = 0.469; // Made up variable name
 
             vec4 i = vec4(
-                theta > _mix //mix(thresholdD1, thresholdD2, phiD)
-                    ? theta < _mix + 0.001 //mix(thresholdD1, thresholdD2, phiD) + 0.001
+                thetaY > 0.453 && thetaX > 0.453 && thetaY < 0.49 && thetaX < 0.47? fn(): // Snorkle
 
-                        // Add border around "blob".
-                        ? vec3(proj.r*0.9, proj.g*0.9, proj.b*0.9)//vec3(0,0,0) //vec3(float(${OPTIONS.colorR}), float(${OPTIONS.colorG}), float(${OPTIONS.colorB})) // texture2DProj(g,a).rgb * 0.259
-                        
-                        // Add trippy effect.
-                        :  ${OPTIONS.debug}
-                            ? proj.xyz * 0.7
-                            : fn()              //fragColor //linearColors  //vec3((_mix * st.x), (_mix * st.y), (_mix * st.x))//vec3(tan(thetaD * 10000.0) * 0.1, tan(thetaD*10000.0)* 0.1,tan(thetaD* 10000.0) * 0.3 ) //vec3(rand(vec2(potato.y, a.y))*0.2,rand(vec2(potato.x, a.z))*0.2 ,rand(vec2(a.x, a.y))*0.5 )
+                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > 0.375 && thetaX < 0.479? fn():
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > 0.368 && thetaX < 0.485? fn():
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > 0.349 && thetaX < 0.499? fn():
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > 0.330 && thetaX < 0.519? fn():
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))
+                        ? thetaX > 0.319 && thetaX < 0.533? fn():
+                           thetaX < 0.065 ? fn():
+                           thetaX > 0.789? fn(): proj
+                        :
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0))
+                       ? thetaX > 0.313 && thetaX < 0.537? fn():
+                           thetaX < 0.075 ? fn():
+                           thetaX > 0.775? fn(): proj
+                       :
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0))
+                       ? thetaX > 0.304 && thetaX < 0.543? fn():
+                           thetaX < 0.085 ? fn():
+                           thetaX > 0.752? fn(): proj
+                       :
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0))
+                       ? thetaX > 0.299 && thetaX < 0.549? fn():
+                             thetaX < 0.10 ? fn():
+                             thetaX > 0.75 ? fn(): proj
+                       :
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0))
+                       ? thetaX > 0.294 && thetaX < 0.559? fn():
+                              thetaX < 0.12 ? fn():
+                              thetaX > 0.72 ? fn(): proj
+                       :
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5))
+                        ? thetaX > 0.28 && thetaX < 0.563 ? fn():
+                              thetaX < 0.13 ? fn():
+                              thetaX > 0.70 ? fn(): proj
+                        :
+                thetaY > (aa + (ty*8.4)) && (thetaY < aa + (ty*21.3)) && thetaX > 0.0 && thetaX < 1.0? fn():
 
-                    :proj //texture2DProj(g,a).rgb// vec3(_r, _r, _r) //vec3(_r, t.gb) //texture2DProj(g,a).rgb
+                    proj
+
                 , f);
 
             gl_FragColor=i;
@@ -157,10 +176,10 @@ console.log(OPTIONS);
             this.opened = true;
 
             let info = localStorage['noCarScriptData'];
-            info = info? JSON.parse(info): { Theta:  OPTIONS.size, Omega: OPTIONS.length, Phi: OPTIONS.width, debug: OPTIONS.debug, x: 100, y: 100};
+            info = info? JSON.parse(info): { debug: OPTIONS.debug, x: 100, y: 100};
 
             let body = document.createElement('div');
-            body.style.cssText = " position: absolute; top: "+info.y+"px; left: "+info.x+"px; background: white;padding: 10px; border-radius: 10px; border: 1px solid grey;z-index: 100000;";
+            body.style.cssText = " position: absolute; top: "+info.y+"px; left: "+info.x+"px; background: white;padding: 10px; border-radius: 10px; border: 1px solid grey;z-index: 100000; min-width:12em";
 
             this.menuBody = body;
 
@@ -169,21 +188,12 @@ console.log(OPTIONS);
             let header=document.createElement('tr');
             header.innerHTML = "<th></th><th>No Car Script Menu</th>";
 
-            let tr1 = document.createElement('tr');
-            tr1.innerHTML = "<td>Theta</td><td style='text-align:center;'> <input style='width:4em;' type='text' id='ThetaInput' value="+info.Theta+"></td><td> Overall size of the blob. Default: 0.85</td>";
-            let tr2 = document.createElement('tr');
-            tr2.innerHTML = "<td>Omega</td><td style='text-align:center;'><input style='width:4em;' type='text' id='OmegaInput' value="+info.Omega+"></td><td> Length of the blob. Default: 0.53</td>";
-            let tr3 = document.createElement('tr');
-            tr3.innerHTML = "<td>Phi</td><td style='text-align:center;'><input style='width:4em;' type='text' id='PhiInput' value="+info.Phi+"></td><td> Width of the blob. Default: 0.10</td>";
             let tr4 = document.createElement('tr');
-            tr4.innerHTML = "<td></td><td><input id='debugCheck' type='checkbox' "+(info.debug?"checked":"")+"><span>Debug mode</span></td>";
+            tr4.innerHTML = "<td></td><td><label><input id='debugCheck' type='checkbox' "+(info.debug?"checked":"")+"><span>Debug mode</span></label></td>";
 
             let saveBtn = document.createElement('button');
             saveBtn.innerHTML = 'Save';
             saveBtn.addEventListener('click', ()=>{
-                info.Theta = document.getElementById('ThetaInput').value;
-                info.Omega = document.getElementById('OmegaInput').value;
-                info.Phi = document.getElementById('PhiInput').value;
                 info.debug = document.getElementById('debugCheck').checked;
                 localStorage['noCarScriptData'] = JSON.stringify(info);
                 msg.innerText = "Saved. Please refresh site.";
@@ -198,9 +208,6 @@ console.log(OPTIONS);
             closeBtn.addEventListener('click', this.close.bind(this));
 
             table.appendChild(header);
-            table.appendChild(tr1);
-            table.appendChild(tr2);
-            table.appendChild(tr3);
             table.appendChild(tr4);
             body.appendChild(table);
             body.appendChild(saveBtn);
@@ -293,15 +300,6 @@ console.log(OPTIONS);
         }
         return f.apply(this, arguments);
     };
-
-    function addCompassStyle() {
-        let style = document.createElement('style');
-        style.id = 'bintulu_nocompass';
-        style.innerHTML = '.compass { display: none } .game-layout__compass { display: none }';
-        document.head.appendChild(style);
-   }
-
-    //addCompassStyle();
 
     document.addEventListener('keydown', (evt) => {
         if (evt.key !== 'Escape') return;
