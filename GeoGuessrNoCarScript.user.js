@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v1.91
+// @name         Fork of drparse's excellent GeoNoCar script v1.92
 // @description  Improvements to classic GeoNoCar script by drparse.
 // @namespace    https://www.geoguessr.com/
 // @version      1.92
