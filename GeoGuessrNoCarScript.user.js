@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v1.92
+// @name         Fork of drparse's excellent GeoNoCar script v2.0
 // @description  Improvements to classic GeoNoCar script by drparse.
 // @namespace    https://www.geoguessr.com/
-// @version      1.92
+// @version      2.0
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
@@ -83,6 +83,11 @@ function injected() {
                 vec3 proj = texture2DProj(g,a).rgb;
                 return proj * 0.7;
             }
+            return vec3(0.5, 0.5, 0.5);
+            if (${OPTIONS.debug}){
+                vec3 proj = texture2DProj(g,a).rgb;
+                return proj * 0.7;
+            }
             float rx = float(${OPTIONS.innerWidth});
             float ry = float(${OPTIONS.innerHeight});
 
@@ -119,49 +124,62 @@ function injected() {
 
             vec3 proj = texture2DProj(g,a).rgb;
 
-            float ty = 0.018; // Made up variable name
-            float aa = 0.469; // Made up variable name
-
+            float ty = 0.018; // Made up variable name.
+            float aa = 0.469; // Made up variable name.
+            
+            float middle = 0.425; // Goes from 0.0 to 0.85 instead of 0.0 to 1.0 for some reason.
+            
             vec4 i = vec4(
-                thetaY > 0.453 && thetaX > 0.453 && thetaY < 0.49 && thetaX < 0.47? fn(): // Snorkle
 
+                // Middle is 0.425
+
+                thetaY > 0.453 && thetaY < 0.49 && thetaX > 0.028 && thetaX < 0.045? fn(): // rear Snorkle
+                thetaY > 0.453 && thetaY < 0.49 && thetaX > 0.453 && thetaX < 0.47? fn(): // Snorkle
+
+
+                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > (0.375-middle)+0.85 && thetaX < 0.851? fn():  // Left side of origin.
+                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > -0.1 && thetaX < (0.479-middle)? fn():        // Right side of origin.
                 thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > 0.375 && thetaX < 0.479? fn():
-                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > 0.368 && thetaX < 0.485? fn():
-                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > 0.349 && thetaX < 0.499? fn():
-                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > 0.330 && thetaX < 0.519? fn():
-                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))
-                        ? thetaX > 0.319 && thetaX < 0.533? fn():
-                           thetaX < 0.065 ? fn():
-                           thetaX > 0.789? fn(): proj
-                        :
-                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0))
-                       ? thetaX > 0.313 && thetaX < 0.537? fn():
-                           thetaX < 0.075 ? fn():
-                           thetaX > 0.775? fn(): proj
-                       :
-                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0))
-                       ? thetaX > 0.304 && thetaX < 0.543? fn():
-                           thetaX < 0.085 ? fn():
-                           thetaX > 0.752? fn(): proj
-                       :
-                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0))
-                       ? thetaX > 0.299 && thetaX < 0.549? fn():
-                             thetaX < 0.10 ? fn():
-                             thetaX > 0.75 ? fn(): proj
-                       :
-                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0))
-                       ? thetaX > 0.294 && thetaX < 0.559? fn():
-                              thetaX < 0.12 ? fn():
-                              thetaX > 0.72 ? fn(): proj
-                       :
-                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5))
-                        ? thetaX > 0.28 && thetaX < 0.563 ? fn():
-                              thetaX < 0.13 ? fn():
-                              thetaX > 0.70 ? fn(): proj
-                        :
-                thetaY > (aa + (ty*8.4)) && (thetaY < aa + (ty*21.3)) && thetaX > 0.0 && thetaX < 1.0? fn():
 
-                    proj
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > (0.368-middle)+0.85 && thetaX < 0.851? fn():    // Left side of origin.
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > -0.1 && thetaX < (0.485-middle)? fn():          // Right side of origin.
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > 0.368 && thetaX < 0.485? fn():
+
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > (0.349-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > -0.1 && thetaX < (0.499-middle)? fn():
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > 0.349 && thetaX < 0.499? fn():
+
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > (0.330-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > -0.1 && thetaX < (0.519-middle)? fn():
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > 0.330 && thetaX < 0.519? fn():
+
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > (0.319-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > -0.1 && thetaX < (0.533-middle)? fn():
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > 0.319 && thetaX < 0.533? fn():
+
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > (0.313-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > -0.1 && thetaX < (0.537-middle)? fn():
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > 0.313 && thetaX < 0.537? fn():
+
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > (0.304-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > -0.1 && thetaX < (0.543-middle)? fn():
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > 0.304 && thetaX < 0.543? fn():
+                
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > (0.299-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > -0.1 && thetaX < (0.549-middle)? fn():
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > 0.299 && thetaX < 0.549? fn():
+
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > (0.294-middle)+0.85 && thetaX < 0.851? fn():
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > -0.1 && thetaX < (0.559-middle)? fn():
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > 0.294 && thetaX < 0.559? fn():
+
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > (0.28-middle)+0.85 && thetaX < 0.851 ? fn():
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > -0.1 && thetaX < (0.563-middle) ? fn():
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > 0.28 && thetaX < 0.563 ? fn():
+
+                thetaY > (aa + (ty*8.4)) && (thetaY < aa + (ty*21.3)) && thetaX > -0.1 && thetaX < 1.0? fn():
+
+                   proj
 
                 , f);
 
