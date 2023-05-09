@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v3.7
+// @name         Fork of drparse's excellent GeoNoCar script v3.8
 // @description  Improvements to classic GeoNoCar script by drparse.
 // @namespace    https://www.geoguessr.com/
-// @version      3.7
+// @version      3.8
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
@@ -529,7 +529,7 @@
             setInterval(function(){
                 // Makeshift render loop.
 
-                if (!info.showFancy) return;
+                if (info.showFancy !== undefined && !info.showFancy) return;
 
                 let testUniform = gl.getUniformLocation(program, 'u_testv');
 
