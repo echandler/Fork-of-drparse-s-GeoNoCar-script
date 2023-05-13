@@ -1,13 +1,13 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v3.8
+// @name         Fork of drparse's excellent GeoNoCar script v4.0
 // @description  Improvements to classic GeoNoCar script by drparse.
 // @namespace    https://www.geoguessr.com/
-// @version      3.8
+// @version      4.0
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
 // @run-at       document-start
-// @copyright    2020, drparse
+// @copyright    2020, drparse, echandler
 // @updateURL    https://github.com/echandler/Fork-of-drparse-s-GeoNoCar-script/raw/main/GeoGuessrNoCarScript.user.js
 // @license      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @noframes
@@ -68,7 +68,11 @@
             vec4 g=vec4(c,1);
             gl_Position=e * g;
 
-            a = vec3(d.xy * b.xy + b.zw,1);
+            vec2 dd = d.xy;
+
+//            dd.x += 0.01;
+
+            a = vec3(dd.xy * b.xy + b.zw,1);
             a *= length(c);
 
             v_testvv =  u_testv;
@@ -127,9 +131,13 @@
                 return sv_proj * 0.7;
             }
 
-             //vec3 sv_proj = texture2DProj(sv_imageTexure,a).rgb;
-             vec3 proj1 =texture2DProj(sampler2d_logoImg, blob).rgb;
-             return mix(sv_proj, proj1, u_mixRatio);
+             vec4 proj1 =texture2DProj(sampler2d_logoImg, blob).rgba;
+
+             if (proj1.a < 1.0){
+             proj1 = mix(vec4(sv_proj.rgb, 0), proj1, proj1.a);
+
+            }
+             return mix(sv_proj, proj1.rgb, u_mixRatio);
         }
 
         vec3 fn(vec3 sv_proj){
@@ -263,9 +271,30 @@
                 let body = document.createElement('div');
                 body.style.cssText = " position: absolute; top: "+info.y+"px; left: "+info.x+"px; background: white;padding: 10px; border-radius: 10px; border: 1px solid grey;z-index: 100000; min-width:12em";
 
+                body.addEventListener('dragenter', function(e){
+                    e.preventDefault(); // Needed because of Chrome bug.
+                });
+
+                body.addEventListener('dragover', function(e){
+                    e.preventDefault();// Needed because of Chrome bug.
+                });
+
+                body.addEventListener('drop', function(e){
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    let dt = e.dataTransfer;
+                    let files = dt.files;
+
+                    handleFileReader(files[0]);
+
+                    msg.innerText =e.dataTransfer.files[0].name;
+                },false);
+
                 this.menuBody = body;
 
                 let table = document.createElement('table');
+
 
                 let header=document.createElement('tr');
                 header.innerHTML = "<th></th><th>No Car Script Menu</th>";
@@ -326,20 +355,49 @@
                 <td><label><input id='showFancyCheck' type='checkbox' ${(info.showFancy === undefined || info.showFancy === true?"checked":"")}><span>Make blob fancy</span></label></td>
                 `;
 
-                let trLogoInfo = document.createElement('tr');
-                trLogoInfo.innerHTML = `
+                let trLogoInfoBase64 = document.createElement('tr');
+                trLogoInfoBase64.innerHTML = `
                 <td></td>
-                <td><button id = 'logoInfoBtn' title ="Example: data:image/png;base64,iVBORw0KGgoAAAANS....">Paste Logo base64</button></td>
+                <td><button id = 'logoInfoBtn' title ="Example: data:image/png;base64,iVBORw0KGgoAAAANS....\n Image has to be less than 4.5 mb.">Paste Base64 Image</button></td>
                 `;
                 // <td><input id='logoInfoInput' type='text' size='15' placeholder="data:image/png;base64,iVBORw0KGgoAAAANS...." value="${info.logoInfo || ""}"></td>
 
                 let data = info.logoInfo;
+
                 setTimeout(()=>{
                     let logoInfoBtn = document.getElementById('logoInfoBtn');
                     logoInfoBtn.addEventListener('click', async ()=>{
                         let input = document.getElementById('logoInfoInput');
                         let text = await navigator.clipboard.readText();
-                        data = text;
+
+                        if (!/^data:image/.test(text)){
+                           alert('Not data url.\n\nFormat example: "data:image/png;base64,iVBORw0KGgoAAAANS.... "');
+                           return;
+                        }
+
+                        if (handleFileSize(text)){
+                           data = text;
+                        } else {
+                            let t = confirm("Pasted data appears to exceed the ~4.5mb limit. It won't be saved on the hard drive and will be lost on refresh. OK?");
+                            if (t){
+                                data = text;
+                            }
+                        }
+
+                        msg.innerText = "Base64 data was read.";
+                    });
+                }, 100);
+
+                let trLogoInfoFromFile = document.createElement('tr');
+                trLogoInfoFromFile.innerHTML = `
+                <td></td>
+                <td><input type='file' id ='logoInfoFile' value="Upload Image" ></td>
+                `;
+
+                setTimeout(()=>{
+                    let logoInfoBtn = document.getElementById('logoInfoFile');
+                    logoInfoBtn.addEventListener('change', async function(e){
+                        handleFileReader(this.files[0]);
                     });
                 }, 100);
 
@@ -355,7 +413,14 @@
                     info.showLogo =document.getElementById('showLogoCheck').checked;
                     info.showLogoOverall =document.getElementById('showLogoOverallCheck').checked;
                     info.showFancy =document.getElementById('showFancyCheck').checked;
-                    info.logoInfo = data; //document.getElementById('logoInfoInput').value;
+
+                    let dataTooLargeForStorage = null;
+
+                    if (fileIsCorrectSize(data)){
+                        info.logoInfo = data; //document.getElementById('logoInfoInput').value;
+                    } else {
+                       dataTooLargeForStorage = true;
+                    }
 
                     localStorage['noCarScriptData'] = JSON.stringify(info);
                     msg.innerText = "Saved....";
@@ -370,12 +435,18 @@
                     updateShader('u_showLogoOverall',info.showLogoOverall === true? 1.0 : 0.0);
                     updateShader('u_showFancy',info.showFancy === true? 1.0 : 0.0);
 
-                    loadImg();
+                    loadImg(dataTooLargeForStorage? data: false);
+
                     setTimeout(triggerRefresh, 100);
                 });
 
                 let msg = document.createElement('span');
                 msg.style.cssText = "margin-left: 2em; font-size: 0.7em; color: grey;";
+
+                body.addEventListener('click', (e)=> {
+                    if (e.target == saveBtn) return;
+                    msg.innerText='';
+                });
 
                 let closeBtn = document.createElement('div');
                 closeBtn.style = 'position:absolute; right: 10px; top:10px; cursor: pointer;';
@@ -392,7 +463,8 @@
                 table.appendChild(trShowLogo);
                 table.appendChild(trShowLogoOverall);
                 table.appendChild(trShowFancy);
-                table.appendChild(trLogoInfo);
+                table.appendChild(trLogoInfoBase64);
+                table.appendChild(trLogoInfoFromFile);
 
                 body.appendChild(table);
                 body.appendChild(saveBtn);
@@ -437,6 +509,36 @@
                         localStorage['noCarScriptData'] = JSON.stringify(info);
                     }
                 });
+
+                function handleFileReader(file){
+                    //var file = files[0];
+                    var reader = new FileReader();
+                    reader.onloadend = function() {
+                        console.log('RESULT', reader)
+                        let text = reader.result;
+                        handleFileSize(text);
+                    }
+                    reader.readAsDataURL(file);
+                }
+
+                function handleFileSize(text){
+                    if (fileIsCorrectSize(text)){
+                        data = text;
+                    } else {
+                        let t = confirm("Pasted data appears to exceed the ~4.5mb limit. It won't be saved on the hard drive and will be lost on refresh. OK?");
+                        if (t){
+                            data = text;
+                        }
+                    }
+                }
+
+                function fileIsCorrectSize(text){
+                    let sizeInBytes = new Blob([text]).size;
+                    if (sizeInBytes / 1024 / 1024 < 4.5){
+                        return true;
+                    }
+                    return false;
+                }
             },
             close : function(){
                 this.opened = false;
@@ -562,7 +664,7 @@
             elem.dispatchEvent( event );
         }
 
-        function loadImg(url){
+        function loadImg(data){
             // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
             let gl = globalGL;
 
@@ -624,7 +726,7 @@
 
                 return;
             }
-            image.src = info.logoInfo;
+            image.src = data || info.logoInfo;
 
             function isPowerOf2(value) {
                 // Might not be necessary
