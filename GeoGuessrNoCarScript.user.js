@@ -1,13 +1,13 @@
 // ==UserScript==
-// @name         Fork of drparse's excellent GeoNoCar script v4.0
+// @name         Fork of drparse's excellent GeoNoCar script v5.0
 // @description  Improvements to classic GeoNoCar script by drparse.
 // @namespace    https://www.geoguessr.com/
-// @version      4.0
+// @version      5.0
 // @author       echandler (original author is drparses)
 // @match        https://www.geoguessr.com/*
 // @grant        unsafeWindow
 // @run-at       document-start
-// @copyright    2020, drparse, echandler
+// @copyright    2020, drparse
 // @updateURL    https://github.com/echandler/Fork-of-drparse-s-GeoNoCar-script/raw/main/GeoGuessrNoCarScript.user.js
 // @license      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @noframes
@@ -20,18 +20,8 @@
         let webGLPrograms = [];
 
         let info = localStorage['noCarScriptData'];
-        info = info? JSON.parse(info): { Theta:  0.85, Omega: 0.53, Phi: 0.10, debug: false, x: 100, y: 100};
+        info = info? JSON.parse(info): { debug: false, x: 100, y: 100};
 
-        const OPTIONS = {
-            innerWidth: window.innerWidth,
-            innerHeight: window.innerHeight,
-            size: 0.85, //+info.Theta,
-            debug: info.debug === false? false: true,
-            showLogoOnly: info.showLogoOnly === false? false: true,
-            showLogoOnly: info.showLogoOnly === false? false: true,
-            showFancy: info.showFancy !== undefined || info.showFancy === false? false: true,
-            disableScript: info.disableScript !== undefined || info.disableScript === false? false: true,
-        };
 
         // If the script breaks, search devtools for "BINTULU" and replace these lines with the new one
         const vertexOld = "const float f=3.1415926;varying vec3 a;uniform vec4 b;attribute vec3 c;attribute vec2 d;uniform mat4 e;void main(){vec4 g=vec4(c,1);gl_Position=e*g;a=vec3(d.xy*b.xy+b.zw,1);a*=length(c);}";
@@ -41,41 +31,28 @@
 
 
         const vertexNew = `
-
         const float f=3.1415926;
         varying vec3 a;
         varying vec3 blob;
         uniform vec4 b;
         attribute vec3 c;
 
-        varying float v_testvv;
-        uniform float u_testv;
+        attribute vec3 coordinates;//testing
+
+        varying float v_time;
+        uniform float u_time;
 
         attribute vec2 d;
         uniform mat4 e;
 
-     //   float angleInRadians = 2.1;
-     //   float cc = cos(angleInRadians);
-     //   float s = sin(angleInRadians);
-
-     //   mat4 xRotation = mat4(1.0, 0.0, 0.0, 0.0,  0.0, cc, s, 0.0,  0.0, -s, cc, 0.0,  0.0, 0.0, 0.0, 1.0);
-
         void main(){
-            //float w = sin(u_testv);
-           // c[2] =  0.001;
-           // vec3 cc = vec3(c[0] + w, c[1], c[2]);
-
             vec4 g=vec4(c,1);
             gl_Position=e * g;
 
-            vec2 dd = d.xy;
-
-//            dd.x += 0.01;
-
-            a = vec3(dd.xy * b.xy + b.zw,1);
+            a = vec3(d.xy * b.xy + b.zw,1);
             a *= length(c);
 
-            v_testvv =  u_testv;
+            v_time =  u_time;
 
             blob = vec3(d.xy,1.0);
         }
@@ -86,11 +63,14 @@
 
         varying vec3 a;
         varying vec3 blob;
+        vec3 spinBlob;
+        // vec2 xy = gl_FragCoord.xy;
 
-        //    vec2 xy = gl_FragCoord.xy;
-
-        varying float v_testvv;
+        varying float v_time;
         uniform float u_random;
+        uniform float u_y;
+        uniform float u_tinyPlanetEffect;
+        uniform float u_tinyPlanetEffectSize;
         uniform float u_onlyPanorama;
         uniform float u_onlyLogoCircle;
         uniform float u_onlyLogoSize;
@@ -99,8 +79,12 @@
         uniform float u_showFancy;
         uniform float u_scriptDisabled;
         uniform float u_bugger;
+        uniform float u_doRotate;
+        uniform float u_doRotateClockwise;
+        uniform float u_doRotateSpeed;
         uniform float u_mixRatio;
         uniform sampler2D sampler2d_logoImg;
+        uniform sampler2D sampler2d_mask;
 
         uniform float f; // sv_alpha can't change uniform name.
         uniform sampler2D sv_imageTexure; // Can change sampler2D uniform name.
@@ -110,8 +94,33 @@
             return sqrt((pf.x-p0.x)*(pf.x-p0.x)+(pf.y-p0.y)*(pf.y-p0.y));
         }
 
+        float modd(float a, float b){
+            return a - (b * floor(a/b));
+        }
+
+        vec4 expandingRing(vec4 texture){
+//            float t = 1.0-((modd((v_time * 0.03) , 360.0))/360.0);
+//
+//            if (blob.y > t && blob.y <= t+0.1 ) {
+//               // ring expanding out
+//
+//               if (blob.y < t + 0.05){
+//
+//                   texture = vec4(0.0, 87.0/255.0, 183.0/ 255.0, texture.a);
+//
+//               } else {
+//
+//                   texture = vec4(1.0,221.0/255.0, 0.0, texture.a);
+//
+//               }
+//            }
+
+            return texture;
+        }
+
         vec3 pixelate() {
-            float z = cos(sin(v_testvv));
+
+           float z = (sin(v_time * 0.0007) + 1.0)/2.0;
 
             float scaling = 5.0 * z + 3.0;
 
@@ -125,75 +134,136 @@
             return vec3(t[0] * tan(z), t[2] * sin(z), t[1] * cos(z)); // vec3(t[0] + z, t[1] + z, t[2] + z);
         }
 
-        vec3 fn1(vec3 sv_proj){
+        vec3 noMask(vec3 sv_proj){
             if (u_bugger == 1.0){
-              //  vec3 sv_proj = texture2DProj(sv_imageTexure,a).rgb;
+
                 return sv_proj * 0.7;
-            }
-
-             vec4 proj1 =texture2DProj(sampler2d_logoImg, blob).rgba;
-
-             if (proj1.a < 1.0){
-             proj1 = mix(vec4(sv_proj.rgb, 0), proj1, proj1.a);
 
             }
-             return mix(sv_proj, proj1.rgb, u_mixRatio);
+
+            vec4 logo = texture2DProj(sampler2d_logoImg, spinBlob.xyz).rgba;
+
+            //logo = expandingRing(logo);
+
+            if (logo.a < 1.0){
+                 logo = mix(vec4(sv_proj.rgb, 0), logo, logo.a);
+            }
+
+            return mix(sv_proj, logo.rgb, u_mixRatio);
         }
 
-        vec3 fn(vec3 sv_proj){
+        vec3 defaultFunc(vec3 sv_proj){
             if (u_bugger == 1.0){
-              //  vec3 sv_proj = texture2DProj(sv_imageTexure,a).rgb;
+
                 return sv_proj * 0.7;
+
             }
 
             if (u_showFancy == 1.0){
+
                 return pixelate();
+
             }
 
             if (u_showLogoOverall == 1.0){
 
-              //  vec3 sv_proj = texture2DProj(sv_imageTexure,a).rgb;
-               return fn1(sv_proj);
+               return noMask(sv_proj);
+
             }
 
             return vec3(0.5, 0.5, 0.5);
         }
 
+        vec3 useMask(vec3 sv_proj){
+            vec4 mask = texture2DProj(sampler2d_mask, blob.xyz).rgba;
+
+            vec4 logo = texture2DProj(sampler2d_logoImg, spinBlob.xyz).rgba;
+
+            logo = expandingRing(logo);
+
+            if (logo.a < 1.0){
+                logo = mix(vec4(sv_proj, 0.0), logo, logo.a);
+            }
+
+            if (mask.a < 1.0){
+                logo = mix(vec4(sv_proj, 0.0), logo, mask.a);
+            }
+
+            return mix(sv_proj, logo.rgb, u_mixRatio);
+        }
+
+        void tinyPlanetEffect(){
+            // Playing with the y value makes some cool effects.
+            float y = spinBlob.y;
+            float size = -u_tinyPlanetEffectSize;
+            if (y + size > 1.0){
+                y = 1.0 - y + size;
+            } else {
+                y = y + size;
+            }
+
+            spinBlob.y = y;
+        }
+
+        void updateRotation(){
+            spinBlob = blob;
+
+            if (u_doRotate == 1.0){
+
+                float t = ((modd((v_time * u_doRotateSpeed) , 360.0))/360.0);
+
+                t = u_doRotateClockwise == 1.0? t: 1.0-t;
+
+                if (blob.x > t){
+
+                    spinBlob = vec3(blob.x - t, blob.y, blob.z);
+
+                } else if (blob.x < t){
+
+                    spinBlob = vec3(1.0 - t + blob.x, blob.y, blob.z);
+
+                }
+            }
+        }
+
         void main(){
             // Unfortunately blobSize was here when the below calculations were made and they
             // will have to be redone to remove blobSize. Maybe in the future sometime....
+
+            updateRotation();
+
+            if (u_tinyPlanetEffect == 1.0){
+                tinyPlanetEffect();
+            }
+
             float blobSize = 0.85;
-            float thetaY = blob.y * blobSize; //u_testv;
+            float thetaY = blob.y * blobSize;
             float thetaX = blob.x * blobSize;
 
+            float z = sin(v_time);
+            float zz = cos(v_time);
 
-            float z = sin(v_testvv);
-            float zz = cos(v_testvv);
             vec3 sv_proj = texture2DProj(sv_imageTexure,a / a[2]).rgb;
-            //vec3 proj = vec3(proj1[0] * z, proj1[1] * zz, proj1[2]);
-            //vec3 proj = pixelate();
 
             float ty = 0.018; // Made up variable name.
             float aa = 0.469; // Made up variable name.
 
             float middle = 0.425; // Goes from 0.0 to 0.85 instead of 0.0 to 1.0 for some reason.
-            float offsety =  (0.001 * z);
-            float offsetx =  (0.001 * cos(v_testvv));
 
             vec4 i = vec4(0.0);
-            float tttt = 1.0;
 
             if (u_scriptDisabled == 1.0){
 
                 i = vec4(sv_proj, f);
 
+            } else if (u_onlyPanorama == 1.0){
+               //i = vec4(noMask(sv_proj), f);
+
+               i = vec4(useMask(sv_proj), f);
+
             } else if (u_onlyLogoCircle == 1.0){
 
-               i = vec4( thetaY > (aa + (ty * u_onlyLogoSize)) && (thetaY < aa + (ty*21.3)) && thetaX > -0.1 && thetaX < 1.0? fn1(sv_proj): sv_proj, f);
-
-            } else if (u_onlyPanorama == 1.0){
-
-               i = vec4(fn1(sv_proj), f);
+               i = vec4( thetaY > (u_onlyLogoSize/21.3) && (thetaY < 21.3) && thetaX > -0.1 && thetaX < 1.0? noMask(sv_proj): sv_proj, f);
 
             } else {
              i = vec4(
@@ -201,53 +271,53 @@
                 // Middle is 0.425
 
 
-                thetaY > 0.453 && thetaY < 0.49 && thetaX > 0.028 && thetaX < 0.045? fn(sv_proj): // rear Snorkle
-                thetaY > 0.453 && thetaY < 0.49 && thetaX > 0.453 && thetaX < 0.47? fn(sv_proj): // Snorkle
+                thetaY > 0.453 && thetaY < 0.49 && thetaX > 0.028 && thetaX < 0.045? defaultFunc(sv_proj): // rear Snorkle
+                thetaY > 0.453 && thetaY < 0.49 && thetaX > 0.453 && thetaX < 0.47? defaultFunc(sv_proj): // Snorkle
 
 
-                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > (0.375-middle)+0.85 && thetaX < 0.851? fn(sv_proj):  // Left side of origin.
-                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > -0.1 && thetaX < (0.479-middle)? fn(sv_proj):        // Right side of origin.
-                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > 0.375 && thetaX < 0.479? fn(sv_proj):
+                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > (0.375-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):  // Left side of origin.
+                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > -0.1 && thetaX < (0.479-middle)? defaultFunc(sv_proj):        // Right side of origin.
+                thetaY > 0.464 && thetaY < (aa + ty * 0.4) && thetaX > 0.375 && thetaX < 0.479? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > (0.368-middle)+0.85 && thetaX < 0.851? fn(sv_proj):    // Left side of origin.
-                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > -0.1 && thetaX < (0.485-middle)? fn(sv_proj):          // Right side of origin.
-                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > 0.368 && thetaX < 0.485? fn(sv_proj):
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > (0.368-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):    // Left side of origin.
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > -0.1 && thetaX < (0.485-middle)? defaultFunc(sv_proj):          // Right side of origin.
+                thetaY > (aa + (ty *0.4)) && thetaY < (aa + ty) && thetaX > 0.368 && thetaX < 0.485? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > (0.349-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > -0.1 && thetaX < (0.499-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > 0.349 && thetaX < 0.499? fn(sv_proj):
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > (0.349-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > -0.1 && thetaX < (0.499-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*1.0)) && (thetaY < aa + (ty*2.0)) && thetaX > 0.349 && thetaX < 0.499? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > (0.330-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > -0.1 && thetaX < (0.519-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > 0.330 && thetaX < 0.519? fn(sv_proj):
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > (0.330-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > -0.1 && thetaX < (0.519-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*2.0)) && (thetaY < aa + (ty*3.0)) && thetaX > 0.330 && thetaX < 0.519? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > (0.319-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > -0.1 && thetaX < (0.533-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > 0.319 && thetaX < 0.533? fn(sv_proj):
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > (0.319-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > -0.1 && thetaX < (0.533-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*3.0)) && (thetaY < aa + (ty*4.0))&& thetaX > 0.319 && thetaX < 0.533? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > (0.313-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > -0.1 && thetaX < (0.537-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > 0.313 && thetaX < 0.537? fn(sv_proj):
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > (0.313-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > -0.1 && thetaX < (0.537-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*4.0)) && (thetaY < aa + (ty*5.0)) && thetaX > 0.313 && thetaX < 0.537? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > (0.304-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > -0.1 && thetaX < (0.543-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > 0.304 && thetaX < 0.543? fn(sv_proj):
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > (0.304-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > -0.1 && thetaX < (0.543-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*5.0)) && (thetaY < aa + (ty*6.0)) && thetaX > 0.304 && thetaX < 0.543? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > (0.299-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > -0.1 && thetaX < (0.549-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > 0.299 && thetaX < 0.549? fn(sv_proj):
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > (0.299-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > -0.1 && thetaX < (0.549-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*6.0)) && (thetaY < aa + (ty*7.0)) && thetaX > 0.299 && thetaX < 0.549? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > (0.294-middle)+0.85 && thetaX < 0.851? fn(sv_proj):
-                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > -0.1 && thetaX < (0.559-middle)? fn(sv_proj):
-                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > 0.294 && thetaX < 0.559? fn(sv_proj):
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > (0.294-middle)+0.85 && thetaX < 0.851? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > -0.1 && thetaX < (0.559-middle)? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*7.0)) && (thetaY < aa + (ty*8.0)) && thetaX > 0.294 && thetaX < 0.559? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > (0.28-middle)+0.85 && thetaX < 0.851 ? fn(sv_proj):
-                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > -0.1 && thetaX < (0.563-middle) ? fn(sv_proj):
-                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > 0.28 && thetaX < 0.563 ? fn(sv_proj):
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > (0.28-middle)+0.85 && thetaX < 0.851 ? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > -0.1 && thetaX < (0.563-middle) ? defaultFunc(sv_proj):
+                thetaY > (aa + (ty*8.0)) && (thetaY < aa + (ty*8.5)) && thetaX > 0.28 && thetaX < 0.563 ? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*8.4)) && (thetaY < aa + (ty*11.35)) && thetaX > -0.1 && thetaX < 1.0? fn(sv_proj):
+                thetaY > (aa + (ty*8.4)) && (thetaY < aa + (ty*11.35)) && thetaX > -0.1 && thetaX < 1.0? defaultFunc(sv_proj):
 
-                thetaY > (aa + (ty*11.35)) && (thetaY < aa + (ty*21.3)) && thetaX > -0.1 && thetaX < 1.0? (u_showLogo == 1.0? fn1(sv_proj): fn(sv_proj)) :
+                thetaY > (aa + (ty*11.35)) && (thetaY < aa + (ty*21.3)) && thetaX > -0.1 && thetaX < 1.0? (u_showLogo == 1.0? noMask(sv_proj): defaultFunc(sv_proj)) :
 
                    sv_proj
 
@@ -264,12 +334,9 @@
             open: function(){
                 this.opened = true;
 
-                info.debug = info.debug === undefined? OPTIONS.debug: info.debug;
-                info.x = info.x === undefined? 100: info.x;
-                info.y = info.y === undefined? 100: info.y;
-
                 let body = document.createElement('div');
-                body.style.cssText = " position: absolute; top: "+info.y+"px; left: "+info.x+"px; background: white;padding: 10px; border-radius: 10px; border: 1px solid grey;z-index: 100000; min-width:12em";
+                body.style.cssText = `position: absolute; top: ${info.y}px; left: ${info.x}px; background: white;padding: 10px; border-radius: 10px;
+                                      border: 1px solid grey;z-index: 100000; min-width:12em; overflow-y:scroll; max-height: 60vh;`;
 
                 body.addEventListener('dragenter', function(e){
                     e.preventDefault(); // Needed because of Chrome bug.
@@ -286,7 +353,12 @@
                     let dt = e.dataTransfer;
                     let files = dt.files;
 
-                    handleFileReader(files[0]);
+                    let reader = new FileReader();
+                    reader.onloadend = function() {
+                        let text = reader.result;
+                        data = text;
+                    }
+                    reader.readAsDataURL(files[0]);
 
                     msg.innerText =e.dataTransfer.files[0].name;
                 },false);
@@ -294,7 +366,6 @@
                 this.menuBody = body;
 
                 let table = document.createElement('table');
-
 
                 let header=document.createElement('tr');
                 header.innerHTML = "<th></th><th>No Car Script Menu</th>";
@@ -311,6 +382,22 @@
                 <td><label><input id='debugCheck' type='checkbox' ${(info.debug?"checked":"")}><span>Debug mode</span></label></td>
                 `;
 
+                let trDoRotate = document.createElement('tr');
+                trDoRotate.innerHTML = `
+                <td></td>
+                <td colspan='2'><label><input id='doRotate' type='checkbox' ${(info.doRotate === true?"checked":"")}><span>Make it spin</span></label>
+                <label><input id='doRotateClockwise' type='checkbox' ${(info.doRotateClockwise === true?"checked":"")}><span>Clockwise</span></label>
+                <span>Speed</span><input id='doRotateSpeed' type='text' size="5" value="${info.doRotateSpeed || 0.003}"></td>
+                `;
+
+                let trTinyPlanetEffect = document.createElement('tr');
+
+                trTinyPlanetEffect.innerHTML = `
+                <td></td>
+                <td colspan='2'><label><input id='tinyPlanetCheck' type='checkbox' ${(info.tinyPlanetEffect === true?"checked":"")}><span>Tiny planet effect</span></label>
+                <span>Size</span><input id='tinyPlanetSize' type='text' size="5" value="${info.tinyPlanetEffectSize || 0.45}"></td>
+                `;
+
                 let trShowOnlyPanorama = document.createElement('tr');
                 trShowOnlyPanorama.innerHTML = `
                 <td></td>
@@ -320,22 +407,30 @@
                 let trShowLogoOnly = document.createElement('tr');
                 trShowLogoOnly.innerHTML = `
                 <td></td>
-                <td><label><input id='showLogoOnlyCheck' type='checkbox' ${(info.showLogoOnly?"checked":"")}><span title="Overrides everthing!">Only show circle logo</span></label></td>
+                <td colspan='2'><label><input id='showLogoOnlyCheck' type='checkbox' ${(info.showLogoOnly?"checked":"")}><span title="Overrides everthing!">Confine panorama in circle</span></label>
+                <input style="padding:0px;" id="showLogoOnlySize" type="range" min="-19" max="-0" step="0.1" value="${-(info.showLogoOnlySize != undefined? info.showLogoOnlySize: 15)}" class="slider"></td>
                 `;
 
-                let trShowLogoOnlySize = document.createElement('tr');
-                trShowLogoOnlySize.innerHTML = `
-                <td></td>
-                <td><span style="margin-left:4px;" title="Overrides everthing!">Only show circle logo size</span></td>
-                <td><input style="padding:0px;" id="showLogoOnlySize" type="range" min="-20" max="-5" value="${-(info.showLogoOnlySize) || -15}" class="slider"></td>
-                `;
+                setTimeout(function(){
+                    document.getElementById('showLogoOnlySize').addEventListener('change', function(e){
+                        info.showLogoOnlySize =Math.abs(this.value);
+                        updateAllShaders(info);
+                    });
+                }, 100);
 
                 let trMixRatio = document.createElement('tr');
                 trMixRatio.innerHTML = `
                 <td></td>
                 <td><span style="margin-left:4px;" >Color mix ratio</span></td>
-                <td><input style="padding:0px;" id="mixRatio" type="range" min="0.1" max="1.0" step="0.1" value="${info.mixRatio || 1.0}" class="slider"></td>
+                <td><input style="padding:0px;" id="mixRatio" type="range" min="0.1" max="1.0" step="0.05" value="${info.mixRatio || 1.0}" class="slider"></td>
                 `;
+
+                setTimeout(function(){
+                    document.getElementById('mixRatio').addEventListener('change', function(e){
+                        info.mixRatio =document.getElementById('mixRatio').value;
+                        updateAllShaders(info);
+                    });
+                }, 100);
 
                 let trShowLogo = document.createElement('tr');
                 trShowLogo.innerHTML = `
@@ -355,14 +450,47 @@
                 <td><label><input id='showFancyCheck' type='checkbox' ${(info.showFancy === undefined || info.showFancy === true?"checked":"")}><span>Make blob fancy</span></label></td>
                 `;
 
+                let trMaskMode = document.createElement('tr');
+                trMaskMode.innerHTML = `
+                <td></td>
+                <td><label><input id='maskMode' type='checkbox' ><span>Upload file as a mask</span></label></td>
+                `;
+
+
+                let trDeleteMask = document.createElement('tr');
+                trDeleteMask.innerHTML = `
+                <td></td>
+                <td colspan='2'><button id='deleteMask' type='checkbox' ><span>Delete mask</span></button>
+                <button id='deletePanoImage' type='checkbox' ><span>Delete pano image</span></button></td>
+                `;
+
+                setTimeout(function(){
+                    document.getElementById('deleteMask').addEventListener('click', function(e){
+                        if(!confirm('Delete the panorama image from database?')) return;
+                        doTheDelete(2);
+                    });
+
+                    document.getElementById('deletePanoImage').addEventListener('click',function(e){
+                        if(!confirm('Delete the mask image from database?')) return;
+                        doTheDelete(1);
+                    });
+
+                    function doTheDelete(id){
+                        db('put', id, "");// Delete mask from database.
+                        const texture = globalGL.createTexture();
+                        globalGL.activeTexture(globalGL["TEXTURE"+id]);
+                        globalGL.bindTexture(globalGL.TEXTURE_2D, texture);
+                        globalGL.activeTexture(globalGL.TEXTURE0);
+                    }
+                }, 100);
+
                 let trLogoInfoBase64 = document.createElement('tr');
                 trLogoInfoBase64.innerHTML = `
                 <td></td>
-                <td><button id = 'logoInfoBtn' title ="Example: data:image/png;base64,iVBORw0KGgoAAAANS....\n Image has to be less than 4.5 mb.">Paste Base64 Image</button></td>
+                <td><button id = 'logoInfoBtn' title ="Example: data:image/png;base64,iVBORw0KGgoAAAANS....\n">Paste Base64 Image</button></td>
                 `;
-                // <td><input id='logoInfoInput' type='text' size='15' placeholder="data:image/png;base64,iVBORw0KGgoAAAANS...." value="${info.logoInfo || ""}"></td>
 
-                let data = info.logoInfo;
+                let data = null; 
 
                 setTimeout(()=>{
                     let logoInfoBtn = document.getElementById('logoInfoBtn');
@@ -375,15 +503,7 @@
                            return;
                         }
 
-                        if (handleFileSize(text)){
-                           data = text;
-                        } else {
-                            let t = confirm("Pasted data appears to exceed the ~4.5mb limit. It won't be saved on the hard drive and will be lost on refresh. OK?");
-                            if (t){
-                                data = text;
-                            }
-                        }
-
+                        data = text;
                         msg.innerText = "Base64 data was read.";
                     });
                 }, 100);
@@ -397,15 +517,28 @@
                 setTimeout(()=>{
                     let logoInfoBtn = document.getElementById('logoInfoFile');
                     logoInfoBtn.addEventListener('change', async function(e){
-                        handleFileReader(this.files[0]);
+
+                        let reader = new FileReader();
+                        reader.onloadend = function() {
+                            let text = reader.result;
+                            data = text;
+                        }
+                        reader.readAsDataURL(this.files[0]);
                     });
+
                 }, 100);
 
                 let saveBtn = document.createElement('button');
                 saveBtn.innerHTML = 'Save';
-                saveBtn.addEventListener('click', ()=>{
+                saveBtn.addEventListener('click', async ()=>{
+
                     info.scriptDisabled = document.getElementById('disableScriptCheck').checked;
                     info.debug = document.getElementById('debugCheck').checked;
+                    info.tinyPlanetEffect = document.getElementById('tinyPlanetCheck').checked;
+                    info.tinyPlanetEffectSize = document.getElementById('tinyPlanetSize').value;
+                    info.doRotate = document.getElementById('doRotate').checked;
+                    info.doRotateClockwise = document.getElementById('doRotateClockwise').checked;
+                    info.doRotateSpeed = document.getElementById('doRotateSpeed').value;
                     info.showOnlyPanorama =document.getElementById('showOnlyPanoramaCheck').checked;
                     info.showLogoOnly =document.getElementById('showLogoOnlyCheck').checked;
                     info.showLogoOnlySize =Math.abs(document.getElementById('showLogoOnlySize').value);
@@ -414,30 +547,26 @@
                     info.showLogoOverall =document.getElementById('showLogoOverallCheck').checked;
                     info.showFancy =document.getElementById('showFancyCheck').checked;
 
-                    let dataTooLargeForStorage = null;
-
-                    if (fileIsCorrectSize(data)){
-                        info.logoInfo = data; //document.getElementById('logoInfoInput').value;
-                    } else {
-                       dataTooLargeForStorage = true;
+                    if (data){
+                        let maskMode = document.getElementById('maskMode').checked;
+                        if (maskMode){
+                            loadImg(data, true);
+                            db('put', 2, data);
+                        } else {
+                            loadImg(data);
+                            db('put', 1, data);
+                        }
+                        data = null;
+                        document.getElementById('logoInfoFile').value = '';
                     }
 
                     localStorage['noCarScriptData'] = JSON.stringify(info);
+
                     msg.innerText = "Saved....";
 
-                    updateShader('u_scriptDisabled',info.scriptDisabled === true? 1.0 : 0.0);
-                    updateShader('u_bugger',info.debug === true? 1.0 : 0.0);
-                    updateShader('u_onlyPanorama',info.showOnlyPanorama === true? 1.0 : 0.0);
-                    updateShader('u_onlyLogoCircle',info.showLogoOnly === true? 1.0 : 0.0);
-                    updateShader('u_onlyLogoSize',info.showLogoOnlySize);
-                    updateShader('u_mixRatio',info.mixRatio);
-                    updateShader('u_showLogo',info.showLogo === true? 1.0 : 0.0);
-                    updateShader('u_showLogoOverall',info.showLogoOverall === true? 1.0 : 0.0);
-                    updateShader('u_showFancy',info.showFancy === true? 1.0 : 0.0);
+                    updateAllShaders(info);
 
-                    loadImg(dataTooLargeForStorage? data: false);
-
-                    setTimeout(triggerRefresh, 100);
+                    setTimeout(triggerRefresh, 40);
                 });
 
                 let msg = document.createElement('span');
@@ -456,13 +585,16 @@
                 table.appendChild(header);
                 table.appendChild(trScriptDisabled);
                 table.appendChild(trDebugMode);
+                table.appendChild(trTinyPlanetEffect);
+                table.appendChild(trDoRotate);
                 table.appendChild(trShowOnlyPanorama);
                 table.appendChild(trShowLogoOnly);
-                table.appendChild(trShowLogoOnlySize);
                 table.appendChild(trMixRatio)
                 table.appendChild(trShowLogo);
                 table.appendChild(trShowLogoOverall);
                 table.appendChild(trShowFancy);
+                table.appendChild(trDeleteMask);
+                table.appendChild(trMaskMode);
                 table.appendChild(trLogoInfoBase64);
                 table.appendChild(trLogoInfoFromFile);
 
@@ -477,9 +609,9 @@
                 inputs.forEach(el => el.addEventListener('mousedown', e => e.stopPropagation()));
 
                 body.addEventListener('mousedown', function(e){
-                    //                console.log(e);
                     document.body.addEventListener('mousemove', mmove);
                     document.body.addEventListener('mouseup', mup);
+
                     let yy = info.y - e.y;
                     let xx = e.x - info.x;
 
@@ -509,36 +641,6 @@
                         localStorage['noCarScriptData'] = JSON.stringify(info);
                     }
                 });
-
-                function handleFileReader(file){
-                    //var file = files[0];
-                    var reader = new FileReader();
-                    reader.onloadend = function() {
-                        console.log('RESULT', reader)
-                        let text = reader.result;
-                        handleFileSize(text);
-                    }
-                    reader.readAsDataURL(file);
-                }
-
-                function handleFileSize(text){
-                    if (fileIsCorrectSize(text)){
-                        data = text;
-                    } else {
-                        let t = confirm("Pasted data appears to exceed the ~4.5mb limit. It won't be saved on the hard drive and will be lost on refresh. OK?");
-                        if (t){
-                            data = text;
-                        }
-                    }
-                }
-
-                function fileIsCorrectSize(text){
-                    let sizeInBytes = new Blob([text]).size;
-                    if (sizeInBytes / 1024 / 1024 < 4.5){
-                        return true;
-                    }
-                    return false;
-                }
             },
             close : function(){
                 this.opened = false;
@@ -554,8 +656,26 @@
                     let glsl = arguments[1];
                     console.log('BINTULU shader', glsl);
 
-                    if (glsl === vertexOld  /*|| glsl === vOld*/) glsl = vertexNew;
-                    else if (glsl === fragOld /* || glsl === fOld*/) glsl = fragNew;
+                    if (glsl === vertexOld  /*|| glsl === vOld*/) {
+
+                        glsl = vertexNew;
+
+                        globalGL = ctx;
+
+                        let oldCtx = ctx.linkProgram;
+                        ctx.linkProgram = function(...args){
+                            let p = oldCtx.call(this, args[0]);
+
+                            initWebGl(args[0]);
+
+                            return p;
+                        }
+
+                    } else if (glsl === fragOld /* || glsl === fOld*/) {
+
+                        glsl = fragNew;
+
+                    }
                     let t = g.call(this, arguments[0], glsl);
 
 
@@ -566,7 +686,6 @@
             shaderSource.bestcity = 'bintulu';
             ctx.shaderSource = shaderSource;
         }
-        let ttt = 0;
 
         function installGetContext(el) {
             const g = el.getContext;
@@ -578,17 +697,6 @@
                     if (ctx && ctx.shaderSource && ctx.shaderSource.bestcity !== 'bintulu') {
                         installShaderSource(ctx);
 
-                        globalGL = ctx;
-
-                        let old = ctx.linkProgram;
-                        ctx.linkProgram = function(...args){
-                            let p = old.call(this, args[0]);
-
-                            initWebGl(args[0]);
-
-                            return p;
-
-                        }
                     }
                     return ctx;
                 }
@@ -607,47 +715,77 @@
             return f.apply(this, arguments);
         };
 
-        function initWebGl(program){
+        async function initWebGl(program){
             webGLPrograms.push(program);
 
+            const onlyPanorama = info.showOnlyPanorama;
+            if (onlyPanorama){
+                info.showOnlyPanorama = false;
+            }
             // Init shader variables
-            updateShader('u_scriptDisabled',info.scriptDisabled === true? 1.0 : 0.0);
-            updateShader('u_bugger',info.debug === true? 1.0 : 0.0);
-            updateShader('sampler2d_logoImg', 1.0, true);
-            updateShader('u_onlyLogoCircle',info.showLogoOnly === true? 1.0 : 0.0);
-            updateShader('u_onlyPanorama',info.showOnlyPanorama === true? 1.0 : 0.0);
-            updateShader('u_onlyLogoSize',info.showLogoOnlySize || 15.0);
-            updateShader('u_mixRatio',info.mixRatio || 1.0);
-            updateShader('u_showLogo',info.showLogo === true? 1.0 : 0.0);
-            updateShader('u_showLogoOverall',info.showLogoOverall === true? 1.0 : 0.0);
-            updateShader('u_showFancy',info.showFancy === undefined || info.showFancy === true? 1.0 : 0.0);
+            updateAllShaders(info);
 
-            loadImg();
+            let mask = await db('get', 2);
+            if (mask.result){
+                loadImg(mask.result.datauri, true, fn);
+            }
 
+            let image = await db('get', 1);
+            if (image.result){
+                loadImg(image.result.datauri, false, fn);
+            }
+
+            function fn(){
+                if (onlyPanorama && (info.showOnlyPanorama !== onlyPanorama)){
+                    info.showOnlyPanorama = onlyPanorama;
+
+                    let p = setInterval(()=> {
+                        updateAllShaders(info);
+                        let val = getUniformValue("u_onlyPanorama");
+                        if (val == 1.0){
+                            clearInterval(p);
+                        }
+                    }, 10);
+                }
+            }
+
+            // Init shader variables
             let el = document.querySelector('[aria-label="Street View"]');
-            let ddd = 0.1;
+            let ddd = Date.now();
             let gl = globalGL;
+
+            // Force an initial event to cause render.
+            // Mouseout doesn't seem to work to cause initial render.
+            let event;
+            triggerEvent(el, "mouseup", event);
+
+            let last = 0;
 
             setInterval(function(){
                 // Makeshift render loop.
 
-                if (info.showFancy !== undefined && !info.showFancy) return;
+                let u_time = gl.getUniformLocation(program, 'u_time');
 
-                let testUniform = gl.getUniformLocation(program, 'u_testv');
+                if (!u_time) return;
 
-                if (!testUniform) return;
+                let dif = Date.now() - ddd;
 
-                gl.uniform1f(testUniform, ddd += 0.01);
+                gl.uniform1f(u_time, dif);
 
-                let randUniform = gl.getUniformLocation(program, 'u_random');
-                gl.uniform1f(randUniform,Math.random());
+                // TODO: Is this still needed?
+                let sin = Math.sin(dif * 0.00015);
+                let u_y = gl.getUniformLocation(program, 'u_y');
+                let tsin = (sin +1) / 2;
+
+                gl.uniform1f(u_y, sin+1 < last? 1.0-tsin: tsin);
+
+                last = sin+1;
 
                 gl.flush(); // Not sure if necessary.
 
                 // Hack to trigger gmaps to refresh streetview.
-                let event;
                 triggerEvent(el, "mouseout", event);
-            }, 30);
+            }, 24);
         }
 
         function triggerRefresh(){
@@ -664,9 +802,9 @@
             elem.dispatchEvent( event );
         }
 
-        function loadImg(data){
+        function loadImg(data, maskBool, callback){
             // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
-            let gl = globalGL;
+            const gl = globalGL;
 
             const level = 0;
             const internalFormat = gl.RGBA;
@@ -706,7 +844,8 @@
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 }
                 // Tell WebGL we want to affect texture unit 1
-                gl.activeTexture(gl.TEXTURE1);
+                //gl.activeTexture(gl.TEXTURE1);
+                gl.activeTexture(maskBool? gl.TEXTURE2: gl.TEXTURE1);
 
                // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
@@ -714,19 +853,11 @@
                 gl.bindTexture(gl.TEXTURE_2D, texture );
 
                 gl.activeTexture(gl.TEXTURE0);
+
+                callback();
             };
 
-            if (!info.logoInfo){
-
-                gl.activeTexture(gl.TEXTURE1);
-
-                gl.bindTexture(gl.TEXTURE_2D, null );
-
-                gl.activeTexture(gl.TEXTURE0);
-
-                return;
-            }
-            image.src = data || info.logoInfo;
+            image.src = data;
 
             function isPowerOf2(value) {
                 // Might not be necessary
@@ -734,24 +865,104 @@
             }
         }
 
-        function updateShader(uni, val, i){
+        async function db(type, id, data){
+            return new Promise(function(res, reg){
+                var request = indexedDB.open('images', 1);
+                request.onupgradeneeded = async function(){
+                    let db = request.result;
+                    let store = db.createObjectStore("images", {keyPath:"id"});
+                    store.createIndex("getData", ["datauri"], {unique: false});
+                }
+
+                request.onsuccess = async function(){
+                    const db = request.result;
+                    const transact = db.transaction("images", "readwrite");
+                    const store = transact.objectStore("images");
+
+                    if (type == "get"){
+                        let getIt = store.get(+id);
+                        getIt.onsuccess = function(){
+                            res(getIt);
+
+                        db.close();
+                        }
+                        getIt.onerror = function(){
+                            res(getIt);
+                        db.close();
+                        }
+                      //  res(store.get(id));
+
+                        return;
+                    }
+
+                    if (type == 'put'){
+                        store.put({id: id, datauri:data})
+                        res();
+                        db.close();
+                        return;
+                    }
+                    if (type == 'add'){
+                        store.add({id: id, datauri: data});
+                        db.close();
+                    }
+                }
+
+                request.onerror = function(){
+                    db.close();
+                }
+
+            });
+        }
+
+        function updateAllShaders(info){
+            updateShader('u_scriptDisabled',info.scriptDisabled === true? 1.0 : 0.0);
+            updateShader('u_bugger',info.debug === true? 1.0 : 0.0);
+            updateShader('u_tinyPlanetEffect',info.tinyPlanetEffect === true? 1.0 : 0.0);
+            updateShader('u_tinyPlanetEffectSize',info.tinyPlanetEffectSize || 0.45);
+            updateShader('u_doRotate',info.doRotate === true? 1.0 : 0.0);
+            updateShader('u_doRotateClockwise',info.doRotateClockwise === true? 1.0 : 0.0);
+            updateShader('u_doRotateSpeed',info.doRotateSpeed || 0.003);
+            updateShader('sampler2d_logoImg', 1.0, true);
+            updateShader('sampler2d_mask', 2.0, true);
+            updateShader('u_onlyLogoCircle',info.showLogoOnly === true? 1.0 : 0.0);
+            updateShader('u_onlyPanorama',info.showOnlyPanorama === true? 1.0 : 0.0);
+            updateShader('u_onlyLogoSize',info.showLogoOnlySize != undefined ? info.showLogoOnlySize: 15.0);
+            updateShader('u_mixRatio',info.mixRatio || 1.0);
+            updateShader('u_showLogo',info.showLogo === true? 1.0 : 0.0);
+            updateShader('u_showLogoOverall',info.showLogoOverall === true? 1.0 : 0.0);
+            updateShader('u_showFancy',info.showFancy === undefined || info.showFancy === true? 1.0 : 0.0);
+        }
+
+        function updateShader(uniform, val, i){
             if (!globalGL || webGLPrograms.length == 0) return;
 
             for (let n = 0; n < webGLPrograms.length; n++){
-                let testUniform = globalGL.getUniformLocation(webGLPrograms[n], uni);
+                let location = globalGL.getUniformLocation(webGLPrograms[n], uniform);
 
-                if (!testUniform) continue;
+                if (!location) continue;
 
                 if (i){
                     // Integer value
-                    globalGL.uniform1i(testUniform, val);
+                    globalGL.uniform1i(location, val);
                 } else {
                     // Float value
-                    globalGL.uniform1f(testUniform, val);
+                    globalGL.uniform1f(location, val);
                 }
 
                 globalGL.flush();
                 break;
+            }
+        }
+
+        function getUniformValue(uniform){
+            if (!globalGL || webGLPrograms.length == 0) return;
+
+            for (let n = 0; n < webGLPrograms.length; n++){
+                let location = globalGL.getUniformLocation(webGLPrograms[n], uniform);
+
+                if (!location) continue;
+
+                return globalGL.getUniform(webGLPrograms[n], location);
             }
         }
 
