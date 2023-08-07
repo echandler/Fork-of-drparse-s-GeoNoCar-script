@@ -15,13 +15,14 @@ Press the escape (esc) key to open the menu.
  2) I used this site to convert the image to base64 [link](https://base64.guru/converter/encode/image), but use what ever site works for you.
     - Make sure to change the "Output Format" to "Data URI -- data:content/type;base64". !!IMPORTANT!!
     - Copy the output to you clipboard.
- 3) On Geoguessr, press the ESC key to open the menu and then click the "Paste logo base64" button, it will automatically get the information from the clipboard.
+ 3) On Geoguessr, press the ESC key to open the menu and upload the image.
  4) Press "Save" and see if it worked. If it didn't, try try again lol.
+ 5) [Nadirpatch.com](https://nadirpatch.com/) is also a good resource, you can use one of the 360 panorama files in the images folder as the "Equirectangular projection" in a pinch, but you have to remove it with photoshop when your done.
 
 ### How to make a 360 panorama
 1) Begin at step 2 above. I don't know much about 360 panoramas, just try it and see if it works.
 2) Click the "Only show panorama" check box if you want to override the street view image (this feature is basically a toy).
-    
+
 [Original GeoNoCar script on openuserjs.org](https://openuserjs.org/scripts/drparse/GeoNoCar)
 
 If you want to reinstall or delete the script, while on the geoguessr website, enter this command in the javascript console (cntrl-shift-j) to delete the saved data : ```delete localStorage.noCarScriptData```
