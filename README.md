@@ -17,7 +17,7 @@ Press the escape (esc) key to open the menu.
     - Copy the output to you clipboard.
  3) On Geoguessr, press the ESC key to open the menu and upload the image.
  4) Press "Save" and see if it worked. If it didn't, try try again lol.
- 5) [Nadirpatch.com](https://nadirpatch.com/) is also a good resource, you can use one of the 360 panorama files in the images folder as the "Equirectangular projection" in a pinch, but you have to remove it with photoshop when your done.
+ 5) [Nadirpatch.com](https://nadirpatch.com/) is also a good resource, you can use one of the 360 panorama files in the images folder as the "Equirectangular projection" in a pinch, but you have to remove it with photoshop when you're done.
 
 ### How to make a 360 panorama
 1) Begin at step 2 above. I don't know much about 360 panoramas, just try it and see if it works.
