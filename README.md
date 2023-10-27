@@ -1,3 +1,5 @@
+``⚠️`` Installing any script could get your account banned.
+
 # Fork of drparse's GeoNoCar script
 ### Hide the camera car in GeoGuessr and add your own 360 panorama logo.
 
